@@ -80,10 +80,11 @@ void KeyboardAzertyFr_::sendReport(KeyReport* keys)
 }
 
 extern
-const uint8_t _asciimap[128] PROGMEM;
+const uint16_t _asciimap[128] PROGMEM;
 
-#define SHIFT 0x80
-const uint8_t _asciimap[128] =
+#define SHIFT 0x0200
+#define ALTGR 0x4000
+const uint16_t _asciimap[128] =
 {
 	0x00,             // NUL
 	0x00,             // SOH
@@ -123,13 +124,13 @@ const uint8_t _asciimap[128] =
 	0x20,          // "
 	0x20|SHIFT,    // #
 	0x30,          // $
-	0x34|SHIFT,    // % (todo)
+	0x34|SHIFT,    // %
 	0x1E,          // &
 	0x21,          // '
 	0x22,         // (
 	0x2d,         // )
 	0x31,         // *
-	0x2b|SHIFT,    // +
+	0x2e|SHIFT,    // +
 	0x10,          // ,
 	0x23,          // -
 	0x36|SHIFT,    // .
@@ -150,7 +151,7 @@ const uint8_t _asciimap[128] =
 	0x2e,          // =
 	0x64|SHIFT,    // >
 	0x10|SHIFT,    // ?
-	0x1f,          // @ (todo)
+	0x27|ALTGR,    // @
 	0x14|SHIFT,    // A
 	0x05|SHIFT,    // B
 	0x06|SHIFT,    // C
@@ -177,12 +178,12 @@ const uint8_t _asciimap[128] =
 	0x1b|SHIFT,    // X
 	0x1c|SHIFT,    // Y
 	0x1a|SHIFT,    // Z
-	0x0c,          // [ TODO 2F
+	0x22|ALTGR,    // [
 	0x31,          // bslash
-	0x0d,          // ] TODO 30
+	0x2d|ALTGR,    // ]
 	0x2F,          // ^
 	0x25,          // _
-	0x35,          // ` TODO
+	0x24|ALTGR,    // `
 	0x14,          // a
 	0x05,          // b
 	0x06,          // c
@@ -209,10 +210,10 @@ const uint8_t _asciimap[128] =
 	0x1b,          // x
 	0x1c,          // y
 	0x1a,          // z
-	0x2f|SHIFT,    // {
-	0x31|SHIFT,    // | TODO
-	0x30|SHIFT,    // } TODO
-	0x35|SHIFT,    // ~ TODO
+	0x21|ALTGR,    // {
+	0x23|ALTGR,    // |
+	0x2e|ALTGR,    // }
+	0x19|ALTGR,    // ~ TODO
 	0              // DEL
 };
 
@@ -226,21 +227,22 @@ uint8_t USBPutChar(uint8_t c);
 size_t KeyboardAzertyFr_::press(uint8_t k)
 {
 	uint8_t i;
+	uint16_t mod;
 	if (k >= 136) {			// it's a non-printing key (not a modifier)
 		k = k - 136;
 	} else if (k >= 128) {	// it's a modifier key
 		_keyReport.modifiers |= (1<<(k-128));
 		k = 0;
 	} else {				// it's a printing key
-		k = pgm_read_byte(_asciimap + k);
+		mod = pgm_read_word(_asciimap + k);
+		k = (mod & 0xFF);
 		if (!k) {
 			setWriteError();
 			return 0;
 		}
-		if (k & 0x80) {						// it's a capital letter or other character reached with shift
-			_keyReport.modifiers |= 0x02;	// the left shift modifier
-			k &= 0x7F;
-		}
+ 		if (mod > 0xFF) {					// it has a modifier
+ 			_keyReport.modifiers |= (mod>>8);
+ 		}
 	}
 
 	// Add k to the key report only if it's not already present
@@ -270,20 +272,21 @@ size_t KeyboardAzertyFr_::press(uint8_t k)
 size_t KeyboardAzertyFr_::release(uint8_t k)
 {
 	uint8_t i;
+	uint16_t mod;
 	if (k >= 136) {			// it's a non-printing key (not a modifier)
 		k = k - 136;
 	} else if (k >= 128) {	// it's a modifier key
 		_keyReport.modifiers &= ~(1<<(k-128));
 		k = 0;
 	} else {				// it's a printing key
-		k = pgm_read_byte(_asciimap + k);
+		mod = pgm_read_word(_asciimap + k);
+		k = (mod & 0xFF);
 		if (!k) {
 			return 0;
 		}
-		if (k & 0x80) {							// it's a capital letter or other character reached with shift
-			_keyReport.modifiers &= ~(0x02);	// the left shift modifier
-			k &= 0x7F;
-		}
+ 		if (mod > 0xFF) {					// it has a modifier
+			_keyReport.modifiers &= ~(mod>>8);
+ 		}
 	}
 
 	// Test the key report to see if k is present.  Clear it if it exists.
