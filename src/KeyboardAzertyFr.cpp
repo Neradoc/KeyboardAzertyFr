@@ -122,7 +122,7 @@ const uint16_t _asciimap[128] =
 	0x2c,          //  ' '
 	0x38,          // !
 	0x20,          // "
-	0x20|SHIFT,    // #
+	0x20|ALTGR,    // #
 	0x30,          // $
 	0x34|SHIFT,    // %
 	0x1E,          // &
